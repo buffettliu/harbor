@@ -16,18 +16,23 @@ package base
 
 import (
 	"fmt"
+	common_http "github.com/goharbor/harbor/src/common/http"
 	"net/http"
 	"net/url"
 	"strings"
-
-	common_http "github.com/goharbor/harbor/src/common/http"
 )
 
 // NewClient returns an instance of the base client
-func NewClient(url string, c *common_http.Client) (*Client, error) {
+func NewClient(regUrl string, c *common_http.Client) (*Client, error) {
+	u, err := url.Parse(regUrl)
+	if err != nil {
+		return nil, err
+	}
+
 	client := &Client{
-		URL: strings.TrimSuffix(url, "/"),
-		C:   c,
+		URL:        fmt.Sprintf("%s://%s", u.Scheme, u.Host),
+		C:          c,
+		RepoPrefix: strings.Trim(u.Path, "/"),
 	}
 	version, err := client.GetAPIVersion()
 	if err != nil {
@@ -42,6 +47,8 @@ type Client struct {
 	URL        string
 	APIVersion string
 	C          *common_http.Client
+
+	RepoPrefix string
 }
 
 // GetAPIVersion returns the supported API version

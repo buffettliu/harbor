@@ -114,6 +114,9 @@ func (m *ManifestListCache) updateManifestList(ctx context.Context, repo string,
 			}
 			if a != nil {
 				existMans = append(existMans, ma)
+				log.Infof("got local manifest %s", ma.Digest)
+			} else {
+				log.Infof("get empty for manifest %s", ma.Digest)
 			}
 		}
 		return manifestlist.FromDescriptors(existMans)

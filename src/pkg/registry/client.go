@@ -134,9 +134,17 @@ func NewClient(url, username, password string, insecure bool, interceptors ...in
 }
 
 // NewClientWithAuthorizer creates a registry client with the provided authorizer
-func NewClientWithAuthorizer(url string, authorizer lib.Authorizer, insecure bool, interceptors ...interceptor.Interceptor) Client {
+func NewClientWithAuthorizer(regUrl string, authorizer lib.Authorizer, insecure bool, interceptors ...interceptor.Interceptor) Client {
+	u, err := url.Parse(regUrl)
+	if err != nil {
+		log.Warningf("invalid url %s", regUrl)
+	} else {
+		regUrl = fmt.Sprintf("%s://%s", u.Scheme, u.Host)
+	}
+
+	log.Infof("create registry client with url %s", regUrl)
 	return &client{
-		url:          url,
+		url:          regUrl,
 		authorizer:   authorizer,
 		interceptors: interceptors,
 		client: &http.Client{
@@ -371,7 +379,8 @@ func (c *client) BlobExist(repository, digest string) (bool, error) {
 }
 
 func (c *client) PullBlob(repository, digest string) (int64, io.ReadCloser, error) {
-	req, err := http.NewRequest(http.MethodGet, buildBlobURL(c.url, repository, digest), nil)
+	blobUrl := buildBlobURL(c.url, repository, digest)
+	req, err := http.NewRequest(http.MethodGet, blobUrl, nil)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -393,6 +402,7 @@ func (c *client) PullBlob(repository, digest string) (int64, io.ReadCloser, erro
 		}
 	}
 
+	log.Infof("pulling blob %s with size=%d", blobUrl, size)
 	return size, resp.Body, nil
 }
 

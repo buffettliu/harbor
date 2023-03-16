@@ -210,7 +210,7 @@ func (c *controller) ProxyManifest(ctx context.Context, art lib.ArtifactInfo, re
 		}
 		return man, err
 	}
-	ct, _, err := man.Payload()
+	ct, pl1, err := man.Payload()
 	if err != nil {
 		return man, err
 	}
@@ -228,6 +228,8 @@ func (c *controller) ProxyManifest(ctx context.Context, art lib.ArtifactInfo, re
 			if len(artInfo.Digest) == 0 {
 				artInfo.Digest = dig
 			}
+
+			log.Debugf("got remote manifest %s # %s : payload: %v", ref, dig, string(pl1))
 			c.waitAndPushManifest(bCtx, remoteRepo, man, artInfo, ct, remote)
 		}
 

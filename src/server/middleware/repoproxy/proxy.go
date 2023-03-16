@@ -73,6 +73,7 @@ func handleBlob(w http.ResponseWriter, r *http.Request, next http.Handler) error
 	}
 
 	if !canProxy(r.Context(), p) || proxyCtl.UseLocalBlob(ctx, art) {
+		log.Infof("handle blob with local cache %s", r.URL.String())
 		next.ServeHTTP(w, r)
 		return nil
 	}
@@ -81,15 +82,18 @@ func handleBlob(w http.ResponseWriter, r *http.Request, next http.Handler) error
 		return err
 	}
 	defer reader.Close()
+
+	log.Infof("handle blob with remote %s", r.URL.String())
+	setHeaders(w, size, "", art.Digest)
+
 	// Use io.CopyN to avoid out of memory when pulling big blob
-	written, err := io.CopyN(w, reader, size)
+	written, err := io.Copy(w, reader)
 	if err != nil {
 		return err
 	}
-	if written != size {
+	if size > 0 && written != size {
 		return errors.Errorf("The size mismatch, actual:%d, expected: %d", written, size)
 	}
-	setHeaders(w, size, "", art.Digest)
 	return nil
 }
 
@@ -244,7 +248,10 @@ func canProxy(ctx context.Context, p *proModels.Project) bool {
 
 func setHeaders(w http.ResponseWriter, size int64, mediaType string, dig string) {
 	h := w.Header()
-	h.Set(contentLength, fmt.Sprintf("%v", size))
+	if size > 0 {
+		h.Set(contentLength, fmt.Sprintf("%v", size))
+	}
+
 	if len(mediaType) > 0 {
 		h.Set(contentType, mediaType)
 	}
@@ -287,6 +294,7 @@ func DisableBlobAndManifestUploadMiddleware() func(http.Handler) http.Handler {
 
 func proxyManifestHead(ctx context.Context, w http.ResponseWriter, ctl proxy.Controller, p *proModels.Project, art lib.ArtifactInfo, remote proxy.RemoteInterface) error {
 	exist, desc, err := ctl.HeadManifest(ctx, art, remote)
+	log.Debugf("proxyManifestHead got remote manifest %+v", desc)
 	if err != nil {
 		return err
 	}
